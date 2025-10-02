@@ -12,7 +12,17 @@ export const handler = async (event) => {
       return { statusCode: 200, headers: CORS, body: '' };
     }
 
-    const store = getStore({ name: 'sandra-free-throw' });
+    // Read credentials from environment (set in Netlify UI)
+    const siteID = process.env.BLOB_SITE_ID;
+    const token  = process.env.BLOB_TOKEN;
+
+    if (!siteID || !token) {
+      console.error('Missing BLOB_SITE_ID or BLOB_TOKEN env vars');
+      return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Server config missing' }) };
+    }
+
+    // Manually pass siteID and token since Labs toggle isn’t available
+    const store = getStore({ name: 'sandra-free-throw', siteID, token });
     const KEY = 'ft-data.json';
 
     if (event.httpMethod === 'GET') {
@@ -40,7 +50,7 @@ export const handler = async (event) => {
       return {
         statusCode: 200,
         headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ok: true })
+        body: JSON.stringify({ ok: true }),
       };
     }
 
