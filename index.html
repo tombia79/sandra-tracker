@@ -5,61 +5,493 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Sandra Free-Throw Tracker</title>
 <style>
-  body{ margin:0; background:#0b1220; color:#e5e7eb; font-family:sans-serif; padding:20px; }
-  .wrap{ max-width:980px; margin:0 auto; }
-  .header{text-align:center; margin-bottom:20px;}
-  .logo{width:72px;height:72px;margin:0 auto 8px;display:block;}
-  table{width:100%;border-collapse:collapse;margin-top:10px;}
-  th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.1);text-align:left;}
-  .num{text-align:right;}
-  .small{font-size:12px;color:#9ca3af;}
-  .bar{height:10px;background:#334155;border-radius:999px;overflow:hidden;}
-  .bar>span{display:block;height:100%;background:#22c55e;}
+  :root{
+    --bg:#000; --card:#111827; --muted:#9ca3af; --ring:rgba(255,255,255,0.08);
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{ margin:0; background:#000; color:#e5e7eb; padding:20px; }
+  .wrap{ max-width:980px; margin:0 auto; position:relative; }
+
+  /* Header */
+  .header{ text-align:center; margin:8px 0 16px; position:relative; }
+  .header .logo{ display:block; margin:0 auto 8px; width:92px; }
+
+  /* Hamburger menu */
+  .menu-wrap{ position:absolute; top:0; right:0; }
+  .menu-btn{
+    background:transparent; border:1px solid var(--ring); color:#e5e7eb;
+    width:42px; height:42px; border-radius:10px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .menu-btn svg{ width:22px; height:22px; }
+  .menu{
+    position:absolute; top:48px; right:0; background:#0b1220; border:1px solid var(--ring);
+    border-radius:12px; box-shadow:0 10px 30px rgba(2,6,23,.6);
+    min-width:210px; padding:6px; display:none; z-index:50;
+  }
+  .menu.open{ display:block; }
+  .menu-item{
+    display:flex; gap:10px; align-items:center; padding:10px 12px; border-radius:10px; cursor:pointer;
+  }
+  .menu-item:hover{ background:rgba(255,255,255,.06); }
+  .divider{ height:1px; background:rgba(255,255,255,.06); margin:6px 0; }
+
+  /* Cards / layout */
+  .card{
+    background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
+    border:1px solid var(--ring); border-radius:12px; padding:14px;
+    box-shadow:0 6px 18px rgba(2,6,23,.5);
+  }
+  label{ font-size:13px; color:#9ca3af; display:block; margin-bottom:6px;}
+
+  input[type="date"], input[type="number"], input[type="month"]{
+    background:#0b1220; color:#e5e7eb; border:1px solid var(--ring);
+    padding:10px 12px; border-radius:10px; outline:none;
+  }
+
+  /* Entry fields */
+  .entry-grid{ display:grid; grid-template-columns: 200px 160px 160px; gap:10px; align-items:end; }
+  .entry-grid input{ font-size:22px; text-align:center; height:56px; }
+  .entry-grid input[type="date"]{ font-size:16px; height:52px; text-align:left; }
+
+  .btn{ border:0; padding:12px 16px; border-radius:10px; cursor:pointer; font-weight:600; }
+  .btn.primary{ background:#2563eb; color:#fff; }
+  .btn.ghost{ background:transparent; border:1px solid var(--ring); color:#cbd5e1; }
+  .btn.warn{ background:#27272a; border:1px solid #3f3f46; color:#fca5a5; }
+  .toolbar{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+
+  .summary{ display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; justify-content:center;}
+  .pill{ background:rgba(255,255,255,.05); padding:8px 12px; border-radius:999px; font-weight:600; }
+
+  table{ width:100%; border-collapse:collapse; margin-top:10px; }
+  th, td{ padding:10px; border-bottom:1px solid rgba(255,255,255,.06); text-align:left; }
+  th{ color:#cbd5e1; font-weight:600; font-size:14px; }
+  td{ font-size:14px; color:#e5e7eb;}
+  .num{ text-align:right; }
+  .small{ font-size:12px; color:#9ca3af; }
+
+  .tabs{ display:flex; gap:6px; margin:8px 0 0; justify-content:center; }
+  .tab{ padding:8px 12px; border-radius:999px; cursor:pointer; border:1px solid var(--ring); }
+  .tab.active{ background:#1f2937; }
+
+  .flex{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .bar{ height:10px; background:#334155; border-radius:999px; overflow:hidden; }
+  .bar > span{ display:block; height:100%; background:#22c55e; }
+
+  @media (max-width:760px){
+    .entry-grid{ grid-template-columns: 1fr 1fr 1fr; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
+
+  <!-- Menu -->
+  <div class="menu-wrap">
+    <button id="menuBtn" class="menu-btn" aria-haspopup="true" aria-expanded="false" aria-label="Menu" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M3 6h18M3 12h18M3 18h18" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <div id="menu" class="menu" role="menu">
+      <div class="menu-item" id="downloadCsv">Download CSV</div>
+      <div class="menu-item" id="uploadCsv">Upload CSV</div>
+      <div class="divider"></div>
+      <div class="menu-item" id="clearAllMenu">Clear All Data</div>
+    </div>
+    <input id="importFile" type="file" accept=".csv" style="display:none;">
+  </div>
+
+  <!-- Header -->
   <div class="header">
-    <img src="basketball_transparent.png" class="logo" alt="Basketball"/>
+    <img src="basketball_on_transparent.png" class="logo" alt="Basketball"/>
     <h1>Sandra Free-Throw Tracker</h1>
   </div>
-  <table>
-    <thead>
-      <tr><th>Date</th><th class="num">Made</th><th class="num">Miss</th><th class="num">Total</th><th style="width:180px;">Accuracy</th></tr>
-    </thead>
-    <tbody id="tbodyDates"></tbody>
-  </table>
+
+  <!-- Entry Form -->
+  <div class="card" style="margin-bottom:12px;">
+    <div class="entry-grid">
+      <div>
+        <label for="date">Date</label>
+        <input id="date" type="date" />
+      </div>
+      <div>
+        <label for="attempts">Total Attempts</label>
+        <input id="attempts" type="number" min="0" max="999" inputmode="numeric" placeholder="0" />
+      </div>
+      <div>
+        <label for="made">Made</label>
+        <input id="made" type="number" min="0" max="999" inputmode="numeric" placeholder="0" />
+      </div>
+    </div>
+    <div class="toolbar" style="margin-top:10px;">
+      <button id="saveBtn" class="btn primary" type="button">Save Entry</button>
+      <button id="resetFormBtn" class="btn ghost" type="button">Reset Form</button>
+      <button id="clearAllBtn" class="btn warn" type="button">Clear All Data</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" data-tab="by-date">By Date</div>
+    <div class="tab" data-tab="by-month">By Month</div>
+  </div>
+
+  <!-- BY DATE VIEW -->
+  <div id="view-by-date" class="card" style="margin-top:8px;">
+    <div class="summary" id="summaryAll"></div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:140px;">Date</th>
+          <th class="num">Made</th>
+          <th class="num">Miss</th>
+          <th class="num">Total</th>
+          <th class="num">Accuracy</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyDates"></tbody>
+    </table>
+    <div id="emptyDates" class="small" style="padding:10px; display:none;">No entries yet — add a date above.</div>
+  </div>
+
+  <!-- BY MONTH VIEW -->
+  <div id="view-by-month" class="card" style="margin-top:8px; display:none;">
+    <div class="flex" style="justify-content:space-between; align-items:flex-end;">
+      <div style="max-width:260px;">
+        <label for="monthPicker">Select Month</label>
+        <input id="monthPicker" type="month" />
+      </div>
+      <div class="summary" id="summaryMonth"></div>
+    </div>
+
+    <div style="margin-top:8px;" class="small">Daily breakdown for selected month</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:120px;">Day</th>
+          <th class="num">Made</th>
+          <th class="num">Miss</th>
+          <th class="num">Total</th>
+          <th style="width:180px;">Accuracy</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyMonthDays"></tbody>
+    </table>
+    <div id="emptyMonthDays" class="small" style="padding:10px; display:none;">No entries this month.</div>
+
+    <div style="margin-top:18px;" class="small">All Months (aggregated)</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th class="num">Made</th>
+          <th class="num">Miss</th>
+          <th class="num">Total</th>
+          <th style="width:180px;">Accuracy</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyMonthsAll"></tbody>
+    </table>
+    <div id="emptyMonthsAll" class="small" style="padding:10px; display:none;">No monthly data yet.</div>
+  </div>
 </div>
 
 <script>
-const data = { byDate: {
-  "2025-09-28": {made: 6, miss: 4},
-  "2025-09-29": {made: 12, miss: 8},
-  "2025-09-30": {made: 15, miss: 5}
-}};
+(() => {
+  const STORAGE_KEY = 'sandra-ft-tracker-v5';
+  const REMOTE_URL = '/.netlify/functions/ft-data';
+  let data = { byDate:{} }; // "YYYY-MM-DD": { made, miss }
+  let editingKey = null;
 
-function pctFmt(m,x){ const t=m+x; return t? Math.round(m/t*100)+"%":"—"; }
+  // Helpers
+  const $ = id => document.getElementById(id);
+  const pctFmt = (m,x)=>{ const t=m+x; return t ? (Math.round(m/t*10000)/100)+'%' : '—'; };
+  const todayISO = ()=>{ const d=new Date(); const tz=new Date(d.getTime()-d.getTimezoneOffset()*60000); return tz.toISOString().slice(0,10); };
 
-function renderByDate(){
-  const tbody=document.getElementById("tbodyDates"); tbody.innerHTML="";
-  const keys=Object.keys(data.byDate).sort().reverse();
-  keys.forEach(k=>{
-    const r=data.byDate[k]; const tot=r.made+r.miss; const pct=tot?Math.round((r.made/tot)*100):0;
-    const tr=document.createElement("tr");
-    tr.innerHTML=`
-      <td><span class="small">${k}</span></td>
-      <td class="num">${r.made}</td>
-      <td class="num">${r.miss}</td>
-      <td class="num">${tot}</td>
-      <td>
-        <div class="bar"><span style="width:${pct}%;"></span></div>
-        <div class="small" style="margin-top:4px; text-align:right;">${pctFmt(r.made,r.miss)}</div>
-      </td>`;
-    tbody.appendChild(tr);
-  });
-}
+  // Local cache
+  function saveLocal(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+  function loadLocal(){ const raw=localStorage.getItem(STORAGE_KEY); if(raw){ try{ data=JSON.parse(raw)||data; }catch{} } }
 
-renderByDate();
+  // Remote sync
+  async function fetchRemote(){ try{ const r=await fetch(REMOTE_URL, { method:'GET' }); if(!r.ok) throw 0; return await r.json(); } catch{ return null; } }
+  async function saveRemote(payload){ try{ await fetch(REMOTE_URL,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) }); } catch(e){ console.warn('Remote save failed', e); } }
+
+  // Override save/load
+  async function load(){ const remote=await fetchRemote(); if(remote && remote.byDate){ data=remote; saveLocal(); } else { loadLocal(); } }
+  function save(){ saveLocal(); saveRemote(data); }
+
+  // Form helpers
+  function setForm(d='', attempts='', made=''){ $('date').value=d||todayISO(); $('attempts').value=attempts; $('made').value=made; }
+  function clearForm(){ editingKey=null; setForm('', '', ''); $('saveBtn').textContent='Save Entry'; }
+
+  function upsertEntry(){
+    const d = $('date').value;
+    const attempts = parseInt($('attempts').value||'0',10);
+    const made = parseInt($('made').value||'0',10);
+    if(!d) return alert('Please choose a date.');
+    if(attempts < 0 || made < 0) return alert('Values must be 0 or greater.');
+    if(made > attempts) return alert('Made cannot exceed Total Attempts.');
+    const miss = attempts - made;
+
+    if (editingKey && editingKey!==d) delete data.byDate[editingKey];
+    data.byDate[d] = { made, miss };
+    save(); renderAll(); clearForm();
+  }
+
+  function editEntry(d){
+    const r = data.byDate[d]; if(!r) return;
+    editingKey = d;
+    setForm(d, (r.made|0)+(r.miss|0), r.made|0);
+    $('saveBtn').textContent='Update Entry';
+  }
+
+  function deleteEntry(d){
+    if(!data.byDate[d]) return;
+    if(!confirm(`Delete entry for ${d}?`)) return;
+    delete data.byDate[d]; save(); renderAll();
+    if (editingKey===d) clearForm();
+  }
+
+  // Aggregations
+  function totalsAll(){
+    let m=0,x=0; Object.values(data.byDate).forEach(r=>{ m+=(r.made|0); x+=(r.miss|0); });
+    return { made:m, miss:x, total:m+x, pct:pctFmt(m,x) };
+  }
+  function aggByMonth(){
+    const out={};
+    Object.entries(data.byDate).forEach(([d,r])=>{
+      const ym = d.slice(0,7);
+      if(!out[ym]) out[ym] = { made:0, miss:0 };
+      out[ym].made += (r.made|0);
+      out[ym].miss += (r.miss|0);
+    });
+    return out;
+  }
+
+  // Rendering
+  function renderByDate(){
+    const t = totalsAll();
+    $('summaryAll').innerHTML =
+      `<span class="pill">Total Made: <strong>${t.made}</strong></span>
+       <span class="pill">Total Miss: <strong>${t.miss}</strong></span>
+       <span class="pill">Total Attempts: <strong>${t.total}</strong></span>
+       <span class="pill">Overall Accuracy: <strong>${t.pct}</strong></span>`;
+
+    const keys = Object.keys(data.byDate).sort().reverse();
+    const tbody = $('tbodyDates'); tbody.innerHTML='';
+    $('emptyDates').style.display = keys.length ? 'none' : 'block';
+    keys.forEach(k=>{
+      const r = data.byDate[k]; const tot=(r.made|0)+(r.miss|0);
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        `<td><span class="small">${k}</span></td>
+         <td class="num">${r.made|0}</td>
+         <td class="num">${r.miss|0}</td>
+         <td class="num">${tot}</td>
+         <td class="num">${pctFmt(r.made, r.miss)}</td>
+         <td>
+           <div class="flex">
+             <button class="btn ghost" data-edit="${k}" type="button">Edit</button>
+             <button class="btn warn" data-del="${k}" type="button">Delete</button>
+           </div>
+         </td>`;
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('[data-edit]').forEach(b=> b.addEventListener('click', ()=>editEntry(b.getAttribute('data-edit'))));
+    tbody.querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', ()=>deleteEntry(b.getAttribute('data-del'))));
+  }
+
+  function renderMonthSection(){
+    const monthPicker = $('monthPicker');
+    const ym = monthPicker.value || todayISO().slice(0,7);
+
+    // Monthly totals summary
+    const rows = Object.entries(data.byDate).filter(([d])=> d.startsWith(ym)).map(([,r])=>r);
+    let m=0,x=0; rows.forEach(r=>{ m+=(r.made|0); x+=(r.miss|0); });
+    const tot = m+x;
+    $('summaryMonth').innerHTML =
+      `<span class="pill">Made: <strong>${m}</strong></span>
+       <span class="pill">Miss: <strong>${x}</strong></span>
+       <span class="pill">Attempts: <strong>${tot}</strong></span>
+       <span class="pill">Accuracy: <strong>${pctFmt(m,x)}</strong></span>`;
+
+    // Daily breakdown
+    const tbody = $('tbodyMonthDays'); tbody.innerHTML='';
+    const dayMap = {}; Object.entries(data.byDate).forEach(([d,r])=>{ if(d.startsWith(ym)) dayMap[d]=r; });
+    const dayKeys = Object.keys(dayMap).sort();
+    $('emptyMonthDays').style.display = dayKeys.length ? 'none' : 'block';
+    dayKeys.forEach(d=>{
+      const r = dayMap[d]; const t=(r.made|0)+(r.miss|0); const pct = t ? Math.round((r.made/t)*100) : 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        `<td><span class="small">${d}</span></td>
+         <td class="num">${r.made|0}</td>
+         <td class="num">${r.miss|0}</td>
+         <td class="num">${t}</td>
+         <td>
+           <div class="bar"><span style="width:${pct}%;"></span></div>
+           <div class="small" style="margin-top:4px;">${pctFmt(r.made, r.miss)}</div>
+         </td>`;
+      tbody.appendChild(tr);
+    });
+
+    // All-months aggregation
+    const tbodyMonths = $('tbodyMonthsAll'); tbodyMonths.innerHTML='';
+    const byMonth = aggByMonth(); const months = Object.keys(byMonth).sort().reverse();
+    $('emptyMonthsAll').style.display = months.length ? 'none' : 'block';
+    months.forEach(k=>{
+      const r = byMonth[k]; const t=(r.made|0)+(r.miss|0); const pct = t? Math.round((r.made/t)*100) : 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        `<td><span class="small">${k}</span></td>
+         <td class="num">${r.made|0}</td>
+         <td class="num">${r.miss|0}</td>
+         <td class="num">${t}</td>
+         <td>
+           <div class="bar"><span style="width:${pct}%;"></span></div>
+           <div class="small" style="margin-top:4px;">${pctFmt(r.made, r.miss)}</div>
+         </td>`;
+      tbodyMonths.appendChild(tr);
+    });
+  }
+
+  function renderAll(){ renderByDate(); renderMonthSection(); }
+
+  // Tabs + Menu
+  function switchTab(name){
+    document.querySelectorAll('.tab').forEach(t=>{
+      t.classList.toggle('active', t.getAttribute('data-tab')===name);
+    });
+    $('view-by-date').style.display = name==='by-date' ? '' : 'none';
+    $('view-by-month').style.display = name==='by-month' ? '' : 'none';
+  }
+
+  function wireMenu(){
+    const menu = $('menu'), btn = $('menuBtn');
+    btn.addEventListener('click', (e)=>{ e.stopPropagation(); menu.classList.toggle('open'); });
+    document.addEventListener('click', (e)=>{ if(!e.target.closest('.menu-wrap')) menu.classList.remove('open'); });
+    $('downloadCsv').addEventListener('click', ()=>{ menu.classList.remove('open'); exportCSV(); });
+    $('uploadCsv').addEventListener('click', ()=>{ menu.classList.remove('open'); $('importFile').click(); });
+    $('clearAllMenu').addEventListener('click', ()=>{
+      menu.classList.remove('open');
+      if(!confirm('Clear ALL data?')) return;
+      data = { byDate:{} }; save(); renderAll(); clearForm();
+    });
+    $('importFile').addEventListener('change', e=>{
+      const f=e.target.files[0]; if(f) importCSV(f); e.target.value='';
+    });
+  }
+
+  // CSV
+  function exportCSV(){
+    const rows = [['date','made','miss','total','accuracy']];
+    const keys = Object.keys(data.byDate).sort();
+    keys.forEach(k=>{
+      const r=data.byDate[k]; const t=(r.made|0)+(r.miss|0);
+      rows.push([k, r.made|0, r.miss|0, t, t? Math.round((r.made/t)*10000)/100+'%':'']);
+    });
+    rows.push([]);
+    rows.push(['month','made','miss','total','accuracy']);
+    const byMonth = aggByMonth();
+    Object.keys(byMonth).sort().forEach(ym=>{
+      const r = byMonth[ym]; const t=(r.made|0)+(r.miss|0);
+      rows.push([ym, r.made|0, r.miss|0, t, t? Math.round((r.made/t)*10000)/100+'%':'']);
+    });
+    rows.push([]);
+    const t = totalsAll();
+    rows.push(['TOTAL', t.made, t.miss, t.total, t.pct]);
+
+    const csv = rows.map(r => r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='sandra-free-throw-tracker.csv';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+
+  function parseCSVLine(line){
+    const out=[]; let cur='', q=false;
+    for (let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){ if(q && line[i+1]==='"'){ cur+='"'; i++; } else { q=!q; } continue; }
+      if(!q && ch===','){ out.push(cur); cur=''; continue; }
+      cur+=ch;
+    }
+    out.push(cur); return out;
+  }
+
+  function importCSV(file){
+    const reader = new FileReader();
+    reader.onload = e=>{
+      try{
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        if(!lines.length) return;
+        const headerCells = parseCSVLine(lines.shift().toLowerCase());
+        const idxDate = headerCells.findIndex(h=>/date/.test(h));
+        const idxMade = headerCells.findIndex(h=>/made/.test(h));
+        const idxMiss = headerCells.findIndex(h=>/miss/.test(h));
+        if (idxDate===-1 || idxMade===-1 || idxMiss===-1){
+          alert('Import failed: CSV must include date, made, miss columns.');
+          return;
+        }
+        lines.forEach(line=>{
+          const cells = parseCSVLine(line);
+          const d = (cells[idxDate]||'').slice(0,10);
+          if (!d) return;
+          const m = parseInt(cells[idxMade]||'0',10)||0;
+          const x = parseInt(cells[idxMiss]||'0',10)||0;
+          data.byDate[d] = { made:m, miss:x };
+        });
+        save(); renderAll(); alert('Import complete.');
+      }catch(err){ alert('Import failed: '+err.message); }
+    };
+    reader.readAsText(file);
+  }
+
+  async function init(){
+    // data
+    await load();
+
+    // form defaults
+    setForm(todayISO(), '', '');
+    $('monthPicker').value = todayISO().slice(0,7);
+
+    // buttons
+    $('saveBtn').addEventListener('click', upsertEntry);
+    $('resetFormBtn').addEventListener('click', clearForm);
+    $('clearAllBtn').addEventListener('click', ()=>{
+      if(!confirm('Clear ALL data?')) return;
+      data = { byDate:{} }; save(); renderAll(); clearForm();
+    });
+
+    // tabs
+    document.querySelectorAll('.tab').forEach(t=>{
+      t.addEventListener('click', ()=> switchTab(t.getAttribute('data-tab')));
+    });
+    $('monthPicker').addEventListener('change', renderMonthSection);
+
+    // menu
+    wireMenu();
+
+    // initial render
+    renderAll();
+  }
+
+  // Tab switcher
+  function switchTab(name){
+    document.querySelectorAll('.tab').forEach(t=>{
+      t.classList.toggle('active', t.getAttribute('data-tab')===name);
+    });
+    $('view-by-date').style.display = name==='by-date' ? '' : 'none';
+    $('view-by-month').style.display = name==='by-month' ? '' : 'none';
+  }
+
+  // Go!
+  init();
+})();
 </script>
 </body>
 </html>
