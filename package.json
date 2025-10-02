@@ -4,5 +4,8 @@
   "type": "module",
   "dependencies": {
     "@netlify/blobs": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
