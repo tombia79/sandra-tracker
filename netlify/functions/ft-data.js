@@ -1,32 +1,45 @@
 // netlify/functions/ft-data.js
 import { getStore } from '@netlify/blobs';
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+export async function handler(event, context) {
+  const CORS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
 
-  const store = getStore({ name: 'sandra-free-throw' });
-  const KEY = 'ft-data.json';
-
-  if (req.method === 'GET') {
-    const json = await store.get(KEY, { type: 'json' });
-    return res.status(200).json(json || { byDate: {} });
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: CORS, body: '' };
   }
 
-  if (req.method === 'POST') {
-    try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  try {
+    // Create (or open) a Blobs store named "sandra-free-throw"
+    // You can rename it if you want a different bucket name.
+    const store = getStore({ name: 'sandra-free-throw' });
+    const KEY = 'ft-data.json';
+
+    if (event.httpMethod === 'GET') {
+      const json = await store.get(KEY, { type: 'json' });
+      return {
+        statusCode: 200,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+        body: JSON.stringify(json || { byDate: {} }),
+      };
+    }
+
+    if (event.httpMethod === 'POST') {
+      const body = event.body ? JSON.parse(event.body) : null;
       if (!body || typeof body !== 'object' || !body.byDate) {
-        return res.status(400).json({ error: 'Invalid payload' });
+        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Invalid payload' }) };
       }
       await store.set(KEY, JSON.stringify(body), { contentType: 'application/json' });
-      return res.status(200).json({ ok: true });
-    } catch (e) {
-      return res.status(400).json({ error: 'Bad JSON' });
+      return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true }) };
     }
-  }
 
-  return res.status(405).json({ error: 'Method not allowed' });
+    return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: 'Method not allowed' }) };
+  } catch (err) {
+    // Log goes to Netlify Function logs, and the 502 you saw is produced by errors like these
+    console.error('ft-data error:', err);
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Server error' }) };
+  }
 }
